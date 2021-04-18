@@ -51,9 +51,7 @@ plot(data$id,data$bedrooms) # by listing
 # 1620 SQFT for 33 bedrooms seems impossible and only 1.75 baths
 # Delete Entry
 data<- data[!data$bedrooms == 33, ] 
-# Ten entries that have no bedrooms
-# That seems impossible - due to small number decided to delete entries
-data<- data[!data$bedrooms == 0, ] # deleted entries
+
 #CONTINUE CLEANING
 mean_bedrooms <- mean(data$bedrooms)
 std_bedrooms <- sd(data$bedrooms)
@@ -63,9 +61,9 @@ plot(data$id,data$bedrooms) # by listing
 
 # Clean Bathrooms
 plot(data$id,data$bathrooms) # by listing
-# Some entries have no bedrooms
+# Some entries have no bathrooms
 # That seems impossible - due to small number decided to delete entries
-data<- data[!data$bathrooms == 0, ] # deleted entries
+#data<- data[!data$bathrooms == 0, ] # deleted entries
 # Continue Cleaning
 mean_bathrooms <- mean(data$bathrooms)
 std_bathrooms <- sd(data$bathrooms)
@@ -154,3 +152,13 @@ hist(data$price) # histogram of price
 hist(data$sqft_living15) # histogram of sqft_living15
 hist(data$sqft_living) # histogram of sqft_living
 hist(data$grade) # histogram of grade
+
+
+
+
+### Archived Code Not Used ###
+
+# Ten entries that have no bedrooms
+# That seems impossible - due to small number decided to delete entries
+# data<- data[!data$bedrooms == 0, ] # deleted entries
+
