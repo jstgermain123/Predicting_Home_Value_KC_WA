@@ -1,3 +1,7 @@
+library(tidyverse)
+library(corrplot)
+
+
 #load data
 data <- read.csv(file.choose(), sep=",", header = TRUE )
 d2 <- data
@@ -6,6 +10,12 @@ data$id <- as.character(data$id)
 data$yr_renovated <- as.character(data$yr_renovated)
 data$yr_built <- as.character(data$yr_built)
 data$zipcode <- as.character(data$zipcode)
+data$waterfront <- as.factor(data$waterfront)
+data$view <- as.factor(data$view)
+data$condition<- as.factor(data$condition)
+data$grade<- as.factor(data$grade)
+
+
 
 # Clean Date
 data$date = substr(data$date,1,8)
@@ -136,9 +146,12 @@ plot(data$id,data$sqft_lot15) # by listing
 ##### Correlation Data #########
 
 # Code for correlation plot
-cordata <- data[,c(3:14,19,20)] #correlation plot (numerical only)
+cordata <- data[,c(3:14,18:20)] #correlation plot (numerical only)
 res <- cor(cordata) 
 round(res, 2)
+
+corrplot(res, method="color")
+
 
 ###### Plot Box Plots, Scatter Plots, Histograms #########
 
@@ -146,15 +159,27 @@ round(res, 2)
 # Based on matrix - Grade, Sqft living, and sqftliving15 have the strongest
 # positive correlation with price - lets visualize these distributions
 
-boxplot(data$price ~ data$grade) # boxplot by overall grade of house
+boxplot(data$price~data$grade) # boxplot by overall grade of house
 hist(data$price) # histogram of price
 hist(data$sqft_living15) # histogram of sqft_living15
 hist(data$sqft_living) # histogram of sqft_living
 hist(data$grade) # histogram of grade
 
+#Identify Waterfront Homes
+
+sp <- ggplot(data, aes(long, lat, colour = waterfront)) + 
+  geom_point(shape =18)
+sp + scale_color_manual(values=c("#999999", "blue"))
+
+# Show relationship between price and location
+ggplot(data, aes(long, lat, colour = price)) + 
+  geom_point(shape =18)
 
 
+# Scatter Plot Matrix (TOP Positive Correlating Variables)
+pairs(data[,c(3,6,12,20)], pch = 1, lower.panel = NULL, col = "light blue")
 
+write.csv(data, file="data.csv", row.names=FALSE)
 ### Archived Code Not Used ###
 
 # Ten entries that have no bedrooms
