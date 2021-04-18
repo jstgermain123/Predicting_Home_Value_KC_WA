@@ -7,6 +7,10 @@ data$yr_renovated <- as.character(data$yr_renovated)
 data$yr_built <- as.character(data$yr_built)
 data$zipcode <- as.character(data$zipcode)
 
+# Clean Date
+data$date = substr(data$date,1,8)
+data$date <- as.Date(data$date,format = "%Y%m%d")
+
 # Get Summary Stats
 summary(data)
 
@@ -14,28 +18,16 @@ summary(data)
 new_DF <- data[rowSums(is.na(data)) > 0,]
 # No NAs present
 
-# Classify Houses based on livable square footage to aid in further analysis
-data['sqft_cat'] <- ""
-data$sqft_cat[data$sqft_living <= 1490] <- "Small"
-data$sqft_cat[(data$sqft_living > 1490) & (data$sqft_living <= 2360)] <- "Average"
-data$sqft_cat[data$sqft_living  > 2360] <- "Large"
-
-# Plot Box Plots and scatter plots
-
-# Distribution of Price
-boxplot(data$price ~ data$grade) # boxplot by overall grade of house
-boxplot(data$price ~ data$sqft_cat) # boxplot by sqft category
-
-# Clean Date
-data$date = substr(data$date,1,8)
-data$date <- as.Date(data$date,format = "%Y%m%d")
+###### Outlier Detection and Replacement ##############
 
 # Clean Price
 plot(data$id,data$price) # by listing
 mean_price <- mean(data$price)
 std_price <- sd(data$price)
 two_sd_price <- (2*std_price) + mean_price
+two_sd_price_below <- (-2*std_price) + mean_price
 data$price[data$price > two_sd_price] <- two_sd_price
+data$price[data$price < two_sd_price_below] <- two_sd_price_below
 plot(data$id,data$price) # by listing
 
 # Clean Bedrooms
@@ -55,29 +47,77 @@ data$bathrooms[data$bathrooms > two_sd_bathrooms] <- two_sd_bathrooms
 plot(data$id,data$bathrooms) # by listing
 
 # Clean Sqft Living
+plot(data$id,data$sqft_living) # by listing
+mean_sqftliving <- mean(data$sqft_living)
+std_sqftliving  <- sd(data$sqft_living)
+two_sd_sqftliving  <- (2*std_sqftliving) + mean_sqftliving 
+two_sd_sqftliving_below <- (-2*std_sqftliving ) + mean_sqftliving 
+data$sqft_living[data$sqft_living > two_sd_sqftliving ] <- two_sd_sqftliving 
+data$sqft_living[data$sqft_living < two_sd_sqftliving_below] <- two_sd_sqftliving_below
+plot(data$id,data$sqft_living) # by listing
 
+# Clean Sqft Lot
+plot(data$id,data$sqft_lot) # by listing
+mean_sqft_lot<- mean(data$sqft_lot)
+std_sqft_lot <- sd(data$sqft_lot)
+two_sd_sqft_lot  <- (2*std_sqft_lot) + mean_sqft_lot
+two_sd_sqft_lot_below <- (-2*std_sqft_lot ) + mean_sqft_lot
+data$sqft_lot[data$sqft_lot > two_sd_sqft_lot ] <- two_sd_sqft_lot
+data$sqft_lot[data$sqft_lot < two_sd_sqft_lot_below] <- two_sd_sqft_lot_below
+plot(data$id,data$sqft_lot) # by listing
 
-# Clean Sqft Loft
 # Clean Sqft Above
+plot(data$id,data$sqft_above) # by listing
+mean_sqft_above<- mean(data$sqft_above)
+std_sqft_above <- sd(data$sqft_above)
+two_sd_sqft_above <- (2*std_sqft_above) + mean_sqft_above
+two_sd_sqft_above_below <- (-2*std_sqft_above ) + mean_sqft_above
+data$sqft_above[data$sqft_above > two_sd_sqft_above] <- two_sd_sqft_above
+data$sqft_above[data$sqft_above < two_sd_sqft_above_below] <- two_sd_sqft_above_below
+plot(data$id,data$sqft_above) # by listing
+
 # Clean Sqft Basement
-# Clean Year Rennovated
+plot(data$id,data$sqft_basement) # by listing
+mean_sqft_basement<- mean(data$sqft_basement)
+std_sqft_basement<- sd(data$sqft_basement)
+two_sd_sqft_basement <- (2*std_sqft_basement) + mean_sqft_basement
+two_sd_sqft_basement_below <- (-2*std_sqft_basement) + mean_sqft_basement
+data$sqft_basement[data$sqft_basement> two_sd_sqft_basement ] <- two_sd_sqft_basement
+data$sqft_basement[data$sqft_basement < two_sd_sqft_basement_below] <- two_sd_sqft_basement_below
+plot(data$id,data$sqft_basement) # by listing
+
+# Clean Year Renovated
+# Not sure what to do with 0 values here - do we keep in same format?
+
 # Clean Sqft Living 15
-# Clean Sqft Loft 15
+plot(data$id,data$sqft_living15) # by listing
+mean_sqft_living15<- mean(data$sqft_living15)
+std_sqft_living15<- sd(data$sqft_living15)
+two_sd_sqft_living15 <- (2*std_sqft_living15) + mean_sqft_living15
+two_sd_sqft_living15_below <- (-2*std_sqft_living15) + mean_sqft_living15
+data$sqft_living15[data$sqft_living15> two_sd_sqft_living15 ] <- two_sd_sqft_living15
+data$sqft_living15[data$sqft_living15 < two_sd_sqft_living15_below] <- two_sd_sqft_living15_below
+plot(data$id,data$sqft_living15) # by listing
+
+# Clean Sqft Lot 15
+plot(data$id,data$sqft_lot15) # by listing
+mean_sqft_lot15<- mean(data$sqft_lot15)
+std_sqft_lot15<- sd(data$sqft_lot15)
+two_sd_sqft_lot15 <- (2*std_sqft_lot15) + mean_sqft_lot15
+two_sd_sqft_lot15_below <- (-2*std_sqft_lot15) + mean_sqft_lot15
+data$sqft_lot15[data$sqft_lot15 > two_sd_sqft_lot15] <- two_sd_sqft_lot15
+plot(data$id,data$sqft_lot15) # by listing
+
+
+##### Correlation Data #########
 
 # Code for correlation plot
 cordata <- data[,c(3:14,19,20)] #correlation plot (numerical only)
 res <- cor(cordata) 
 round(res, 2)
 
+###### Plot Box Plots, Scatter Plots, Histograms #########
 
+# Distribution of Price
+boxplot(data$price ~ data$grade) # boxplot by overall grade of house
 
-
-
-# Code that cane be used to replace N/A's
-# use for variables as needed
-data$Deposit.Amount[(is.na(data$Completed) == TRUE)] <- 100
-
-# Code for correlation plot
-cordata <- data[,c(4,6,11)] # use this to select columns you need for correlation plot (numerical only)
-res <- cor(cordata) 
-round(res, 2)
