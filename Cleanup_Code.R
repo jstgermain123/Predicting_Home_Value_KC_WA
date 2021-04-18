@@ -1,6 +1,5 @@
 #load data
 data <- read.csv(file.choose(), sep=",", header = TRUE )
-data<- d2
 d2 <- data
 # Set Correct Data Types
 data$id <- as.character(data$id)
