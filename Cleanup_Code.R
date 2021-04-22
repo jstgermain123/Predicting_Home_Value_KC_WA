@@ -2,13 +2,12 @@ library(tidyverse)
 library(corrplot)
 
 
+
 #load data
 data <- read.csv(file.choose(), sep=",", header = TRUE )
 d2 <- data
 # Set Correct Data Types
 data$id <- as.character(data$id)
-data$yr_renovated <- as.character(data$yr_renovated)
-data$yr_built <- as.character(data$yr_built)
 data$zipcode <- as.character(data$zipcode)
 data$waterfront <- as.factor(data$waterfront)
 data$view <- as.factor(data$view)
@@ -179,10 +178,37 @@ ggplot(data, aes(long, lat, colour = price)) +
 # Scatter Plot Matrix (TOP Positive Correlating Variables)
 pairs(data[,c(3,6,12,20)], pch = 1, lower.panel = NULL, col = "light blue")
 
-write.csv(data, file="data.csv", row.names=FALSE)
-### Archived Code Not Used ###
+##### Modeling Code Week 2###########
 
-# Ten entries that have no bedrooms
-# That seems impossible - due to small number decided to delete entries
-# data<- data[!data$bedrooms == 0, ] # deleted entries
+# Create Dummy Variables
+# Create Renovated Column that is a 0 for unrenovated and 1 for renovated
+data['Renovated'] <- ""
+number_rows <- NROW(data)
+list_1 <- c(1:number_rows)
+
+for (k in list_1){
+  if (data$yr_renovated[k] == 0){
+    data$Renovated[k] <- 0
+  }
+  if (data$yr_renovated[k] != "0"){
+    data$Renovated[k] <- 1
+  }
+}
+data$Renovated <- as.factor(data$Renovated)
+# Make renovation year entires that are 0 the year the house was built
+for (k in list_1){
+  if (data$yr_renovated[k] == 0){
+  data$yr_renovated[k] <- data$yr_built[k]
+  }
+}
+
+
+
+# Model Creation
+
+model <- lm(price ~ . - id -date, data = data)
+summary(model)
+alias(model)
+model$coefficients
+
 
