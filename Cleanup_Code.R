@@ -195,7 +195,7 @@ for (k in list_1){
   }
 }
 data$Renovated <- as.factor(data$Renovated)
-# Make renovation year entires that are 0 the year the house was built
+# Make renovation year entries that are 0 the year the house was built
 for (k in list_1){
   if (data$yr_renovated[k] == 0){
   data$yr_renovated[k] <- data$yr_built[k]
@@ -206,9 +206,10 @@ for (k in list_1){
 
 # Model Creation
 
-model <- lm(price ~ . - id -date, data = data)
+model <- lm(price ~ . - id, data = data)
 summary(model)
 alias(model)
 model$coefficients
-
+mse <- mean(model$residuals^2) #mean squared error
+aic <- AIC(model)
 
