@@ -1,11 +1,15 @@
+install.packages("leaps")
+install.packages("MASS")
 library(tidyverse)
 library(corrplot)
-
+library(ggplot2)
+library(leaps)
+library(MASS)
 
 
 #load data
 data <- read.csv(file.choose(), sep=",", header = TRUE )
-d2 <- data
+d_original <- data
 # Set Correct Data Types
 data$id <- as.character(data$id)
 data$zipcode <- as.character(data$zipcode)
@@ -180,36 +184,179 @@ pairs(data[,c(3,6,12,20)], pch = 1, lower.panel = NULL, col = "light blue")
 
 ##### Modeling Code Week 2###########
 
-# Create Dummy Variables
-# Create Renovated Column that is a 0 for unrenovated and 1 for renovated
-data['Renovated'] <- ""
-number_rows <- NROW(data)
-list_1 <- c(1:number_rows)
-
-for (k in list_1){
-  if (data$yr_renovated[k] == 0){
-    data$Renovated[k] <- 0
-  }
-  if (data$yr_renovated[k] != "0"){
-    data$Renovated[k] <- 1
-  }
-}
-data$Renovated <- as.factor(data$Renovated)
-# Make renovation year entries that are 0 the year the house was built
-for (k in list_1){
-  if (data$yr_renovated[k] == 0){
-  data$yr_renovated[k] <- data$yr_built[k]
-  }
-}
-
-
-
 # Model Creation
 
 model <- lm(price ~ . - id, data = data)
 summary(model)
 alias(model)
 model$coefficients
-mse <- mean(model$residuals^2) #mean squared error
-aic <- AIC(model)
+plot(residuals(model))
+abline(0,0,col="blue")
+plot(model)
+plot(predict(model),data$price,
+     xlab="predicted",ylab="actual", col="light gray")
+abline(a=0,b=1,col="blue")
+
+mse <- mean(model$residuals^2) #mean squared error = 9297484160.66227 or RMSE of 96423.46
+aic <- AIC(model) #AIC - 557499.480819643
+
+# Model Optimized 1 - Feature Engineering 2 Variables 
+
+d_original <- data
+# Use latitude and longitude to determine distance to Seattle
+# 47.608013, -122.335167 lat and long for Seattle
+d_original['distance_to_Seattle'] <- abs(d_original$lat - 47.608013) + abs(d_original$long - -122.335167)
+
+# Create Number of Rooms Variable
+d_original['num_Rooms'] <- d_original$bedrooms + d_original$bathrooms
+
+# Create basement variable
+d_original['basement'] <- ""
+d_original$basement[data$sqft_basement == 0 ] <- 0
+d_original$basement[data$sqft_basement != 0 ] <- 1
+
+# Create Season Variable
+d_original['season'] <- ""
+d_original$season[(as.numeric(substr(d_original$date,6,7)) >= 9) & (as.numeric(substr(d_original$date,6,7)) <= 11)] <- "Fall"
+d_original$season[(as.numeric(substr(d_original$date,6,7)) == 12) | (as.numeric(substr(d_original$date,6,7)) == 1) | (as.numeric(substr(d_original$date,6,7)) == 2)] <- "Winter"
+d_original$season[(as.numeric(substr(d_original$date,6,7)) >= 6) & (as.numeric(substr(d_original$date,6,7)) <= 8)] <- "Summer"
+d_original$season[(as.numeric(substr(d_original$date,6,7)) >= 3) & (as.numeric(substr(d_original$date,6,7)) <= 5)] <- "Spring"
+
+# Modify year renovate column
+# Create Renovated Column that is a 0 for unrenovated and 1 for renovated
+
+d_original['Renovated'] <- ""
+number_rows <- NROW(data)
+list_1 <- c(1:number_rows)
+
+for (k in list_1){
+  if (d_original$yr_renovated[k] == 0){
+    d_original$Renovated[k] <- 0
+  }
+  if (d_original$yr_renovated[k] != "0"){
+    d_original$Renovated[k] <- 1
+  }
+}
+d_original$Renovated <- as.factor(d_original$Renovated)
+
+# Make renovation year entries that are 0 the year the house was built
+for (k in list_1){
+  if (d_original$yr_renovated[k] == 0){
+    d_original$yr_renovated[k] <- d_original$yr_built[k]
+  }
+}
+
+d_original$basement<- as.factor(d_original$basement)
+
+# Grade reclassification
+d_original$construction[as.numeric(d_original$grade) > 7] <- "Above Average"
+d_original$construction[as.numeric(d_original$grade) == 7]  <- "Average"
+d_original$construction[as.numeric(d_original$grade) < 7] <- "Below Average"
+d_original <- d_original[,-12]
+
+# Check Model
+
+model2 <- lm(price ~ . - id, data = d_original)
+summary(model2)
+
+mse2<- mean(model2$residuals^2) #mean squared error
+aic2<- AIC(model2)
+
+
+# Model Optimized 2 - Feature Engineering + Feature Selection
+
+# Fit the full model 
+# Set seed for reproducibility
+set.seed(123)
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+step.model <- train(price ~ . - id, data = d_original,
+                    method = "leapBackward", 
+                    tuneGrid = data.frame(nvmax = 1:101),
+                    trControl = train.control
+)
+step.model$results
+step.model$bestTune
+#RMSE = 129116.6
+
+# Fit the full model 
+# Set seed for reproducibility
+set.seed(123)
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+step.model2 <- train(price ~ . - id, data = d_original,
+                     method = "leapForward", 
+                     tuneGrid = data.frame(nvmax = 1:32),
+                     trControl = train.control
+)
+step.model2$results
+step.model2$bestTune
+#RMSE = 129013.8
+
+
+# Fit the full model 
+# Set seed for reproducibility
+set.seed(123)
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+step.model3 <- train(price ~ . - id, data = d_original,
+                    method = "leapSeq", 
+                    tuneGrid = data.frame(nvmax = 1:32),
+                    trControl = train.control
+)
+step.model3$results
+step.model3$bestTune
+#RMSE = 128989.3
+
+# Model Optimized 3 - Feature Selection
+# Fit the full model 
+# Set seed for reproducibility
+set.seed(123)
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+step.model2 <- train(price ~ . - id, data = data,
+                    method = "leapBackward", 
+                    tuneGrid = data.frame(nvmax = 1:104),
+                    trControl = train.control
+)
+step.model2$results
+step.model2$bestTune
+# RMSE = 96,942.68
+
+set.seed(123)
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+step.model2 <- train(price ~ . - id, data = data,
+                     method = "leapForward", 
+                     tuneGrid = data.frame(nvmax = 1:104),
+                     trControl = train.control
+)
+step.model2$results
+step.model2$bestTune
+# RMSE = 96944.31
+
+set.seed(123)
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+step.model2 <- train(price ~ . - id, data = data,
+                     method = "leapSeq", 
+                     tuneGrid = data.frame(nvmax = 1:104),
+                     trControl = train.control
+)
+step.model2$results
+step.model2$bestTune
+
+
+# Model Optimized 4 - Random Forrest
+
+
+
+
+
 
