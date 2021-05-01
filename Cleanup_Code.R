@@ -1,15 +1,20 @@
 install.packages("leaps")
 install.packages("MASS")
+install.packages("randomForest")
+install.packages("caTools")
 library(tidyverse)
 library(corrplot)
 library(ggplot2)
 library(leaps)
 library(MASS)
+library(caret)
+library(randomForest)
+require(caTools)
 
 
 #load data
 data <- read.csv(file.choose(), sep=",", header = TRUE )
-d_original <- data
+d_Forest <- data
 # Set Correct Data Types
 data$id <- as.character(data$id)
 data$zipcode <- as.character(data$zipcode)
@@ -57,12 +62,17 @@ data$price[data$price > two_sd_price] <- two_sd_price
 data$price[data$price < two_sd_price_below] <- two_sd_price_below
 plot(data$id,data$price) # by listing
 
+
 # Clean Bedrooms
 plot(data$id,data$bedrooms) # by listing
 # Investigate entry that has 33 bedrooms 
 # 1620 SQFT for 33 bedrooms seems impossible and only 1.75 baths
 # Delete Entry
 data<- data[!data$bedrooms == 33, ] 
+
+# Create Number of Rooms Variable
+data['num_Rooms'] <- data$bedrooms + data$bathrooms
+plot(data$id,data$num_Rooms)
 
 #CONTINUE CLEANING
 mean_bedrooms <- mean(data$bedrooms)
@@ -186,7 +196,7 @@ pairs(data[,c(3,6,12,20)], pch = 1, lower.panel = NULL, col = "light blue")
 
 # Model Creation
 
-model <- lm(price ~ . - id, data = data)
+model <- lm(price ~ . - id - num_Rooms, data = data)
 summary(model)
 alias(model)
 model$coefficients
@@ -207,8 +217,6 @@ d_original <- data
 # 47.608013, -122.335167 lat and long for Seattle
 d_original['distance_to_Seattle'] <- abs(d_original$lat - 47.608013) + abs(d_original$long - -122.335167)
 
-# Create Number of Rooms Variable
-d_original['num_Rooms'] <- d_original$bedrooms + d_original$bathrooms
 
 # Create basement variable
 d_original['basement'] <- ""
@@ -252,7 +260,7 @@ d_original$basement<- as.factor(d_original$basement)
 d_original$construction[as.numeric(d_original$grade) > 7] <- "Above Average"
 d_original$construction[as.numeric(d_original$grade) == 7]  <- "Average"
 d_original$construction[as.numeric(d_original$grade) < 7] <- "Below Average"
-d_original <- d_original[,-12]
+#d_original <- d_original[,-12]
 
 # Check Model
 
@@ -261,7 +269,8 @@ summary(model2)
 
 mse2<- mean(model2$residuals^2) #mean squared error
 aic2<- AIC(model2)
-
+# mse = 9144147281.25
+# RMSE = 95,625.03
 
 # Model Optimized 2 - Feature Engineering + Feature Selection
 
@@ -273,12 +282,10 @@ train.control <- trainControl(method = "cv", number = 10)
 # Train the model
 step.model <- train(price ~ . - id, data = d_original,
                     method = "leapBackward", 
-                    tuneGrid = data.frame(nvmax = 1:101),
+                    tuneGrid = data.frame(nvmax = 1:109),
                     trControl = train.control
 )
-step.model$results
-step.model$bestTune
-#RMSE = 129116.6
+#RMSE = 96,246.61 # 109
 
 # Fit the full model 
 # Set seed for reproducibility
@@ -288,28 +295,14 @@ train.control <- trainControl(method = "cv", number = 10)
 # Train the model
 step.model2 <- train(price ~ . - id, data = d_original,
                      method = "leapForward", 
-                     tuneGrid = data.frame(nvmax = 1:32),
+                     tuneGrid = data.frame(nvmax = 1:109),
                      trControl = train.control
 )
 step.model2$results
 step.model2$bestTune
-#RMSE = 129013.8
+#RMSE = 96,235.01 #109
 
 
-# Fit the full model 
-# Set seed for reproducibility
-set.seed(123)
-# Set up repeated k-fold cross-validation
-train.control <- trainControl(method = "cv", number = 10)
-# Train the model
-step.model3 <- train(price ~ . - id, data = d_original,
-                    method = "leapSeq", 
-                    tuneGrid = data.frame(nvmax = 1:32),
-                    trControl = train.control
-)
-step.model3$results
-step.model3$bestTune
-#RMSE = 128989.3
 
 # Model Optimized 3 - Feature Selection
 # Fit the full model 
@@ -318,45 +311,47 @@ set.seed(123)
 # Set up repeated k-fold cross-validation
 train.control <- trainControl(method = "cv", number = 10)
 # Train the model
-step.model2 <- train(price ~ . - id, data = data,
+step.model3 <- train(price ~ . - id, data = data,
                     method = "leapBackward", 
                     tuneGrid = data.frame(nvmax = 1:104),
                     trControl = train.control
 )
-step.model2$results
-step.model2$bestTune
-# RMSE = 96,942.68
+step.model3$results
+step.model3$bestTune
+# RMSE = 96,942.68 #99
 
 set.seed(123)
 # Set up repeated k-fold cross-validation
 train.control <- trainControl(method = "cv", number = 10)
 # Train the model
-step.model2 <- train(price ~ . - id, data = data,
+step.model4 <- train(price ~ . - id, data = data,
                      method = "leapForward", 
                      tuneGrid = data.frame(nvmax = 1:104),
                      trControl = train.control
 )
-step.model2$results
-step.model2$bestTune
-# RMSE = 96944.31
-
-set.seed(123)
-# Set up repeated k-fold cross-validation
-train.control <- trainControl(method = "cv", number = 10)
-# Train the model
-step.model2 <- train(price ~ . - id, data = data,
-                     method = "leapSeq", 
-                     tuneGrid = data.frame(nvmax = 1:104),
-                     trControl = train.control
-)
-step.model2$results
-step.model2$bestTune
+step.model4$results
+step.model4$bestTune
+# RMSE = 96,944.31 #102
 
 
 # Model Optimized 4 - Random Forrest
 
+set.seed(123)
 
+# default RF model
+m1 <- randomForest(
+  formula = price ~ .- id,
+  data    = d_original, ntree = 2000
+)
 
+m1
 
+# number of trees with lowest MSE
+which.min(m1$mse)
 
+# RMSE of this optimal random forest
+sqrt(m1$mse[which.min(m1$mse)])
+# 85,251.42
 
+m1$importance
+AIC(m1)
