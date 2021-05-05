@@ -339,19 +339,14 @@ step.model4$bestTune
 set.seed(123)
 
 # default RF model
-m1 <- randomForest(
-  formula = price ~ .- id,
-  data    = d_original, ntree = 2000
-)
-
-m1
-
+rf.matrix = randomForest(y = d_original[,3], x = d_original[, c(2,4:27)], ntree = 2000, sampsize=10000)
+m1<- rf.matrix
 # number of trees with lowest MSE
 which.min(m1$mse)
 
 # RMSE of this optimal random forest
 sqrt(m1$mse[which.min(m1$mse)])
-# 85,251.42
+# 84,738.43
 
 m1$importance
 AIC(m1)
