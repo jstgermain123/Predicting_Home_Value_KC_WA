@@ -1,4 +1,4 @@
-# ALY_6040
+# Predicting Home Value in King County, Washington
 ALY_6040 Group Project created to showcase data cleanup, modeling, and optimization.
 The goal of our analysis was to create an optimized model to help predict home prices in King County, Washington. 
 To do this, we created several models that included feature engineering techniques, backward and forward feature selection, and a random forest model. 
